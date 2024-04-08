@@ -1,0 +1,17 @@
+syntax = "proto3";
+package documentprocessor.v1;
+option go_package = "doc-translate-go/gen/go/documentprocessor/v1;documentprotov1";
+
+service DocumentProcessor {
+        rpc ProcessDocument(DocumentRequest) returns (DocumentResponse);
+}
+
+message DocumentRequest {
+        optional bytes document = 1;
+        string sourceLang = 2;
+        string targetLang = 3;
+}
+
+message DocumentResponse {
+        optional bytes document = 1;
+}
