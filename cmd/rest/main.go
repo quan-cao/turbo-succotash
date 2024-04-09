@@ -13,10 +13,12 @@ import (
 	userUC "doc-translate-go/pkg/user/usecase"
 	documentprotov1 "doc-translate-go/proto/gen/go/proto/documentprocessor/v1"
 	"doc-translate-go/rest/v1/handler"
+	myMiddleware "doc-translate-go/rest/v1/middleware"
 	"fmt"
 	"log"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -43,8 +45,9 @@ const (
 
 	ENV_TRANSLATE_GRPC_SERVER = "TRANSLATE_GRPC_SERVER"
 
-	ENV_REDIS_ADDRS = "REDIS_ADDRS"
-	ENV_REDIS_PASS  = "REDIS_AUTH_TOKEN"
+	ENV_REDIS_ADDRS              = "REDIS_ADDRS"
+	ENV_REDIS_PASS               = "REDIS_AUTH_TOKEN"
+	ENV_REDIS_EXPIRATION_SECONDS = "REDIS_EXPIRATION_SECONDS"
 )
 
 var (
@@ -115,7 +118,18 @@ func initUseCases() {
 		Password:  os.Getenv(ENV_REDIS_PASS),
 		TLSConfig: &tls.Config{InsecureSkipVerify: true},
 	})
-	redisFileTracker := tracker.NewRedisFileTracker(redisClient)
+
+	expirationSecondsStr := os.Getenv(ENV_REDIS_EXPIRATION_SECONDS)
+	expirationSeconds, err := strconv.Atoi(expirationSecondsStr)
+	if err != nil {
+		log.Fatalf("failed to parse redis expiration: %v", err)
+	}
+	redisFileTracker := tracker.NewRedisFileTracker(redisClient, expirationSeconds)
+
+	err = redisFileTracker.Clear()
+	if err != nil {
+		log.Fatalf("failed to clear file tracker: %v", err)
+	}
 
 	// Translate Queue
 	c := make(chan *queue.TranslateTask, 1<<32)
@@ -139,7 +153,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// TODO: Middleware
-	e.POST("/translate-docx", func(c echo.Context) error { return handler.TranslateDocx(c, *translateUseCase) })
+	e.POST("/translate-docx", func(c echo.Context) error { return handler.TranslateDocx(c, translateUseCase) }, myMiddleware.AuthMiddleware(userUseCase))
 
 	go translateUseCase.ListenAndExecute()
 

@@ -29,11 +29,31 @@ func (r *PostgresqlUserRepository) Create(u *entity.User) (int, error) {
 	return id, nil
 }
 
-func (r *PostgresqlUserRepository) GetByIsid(isid string) (*entity.User, error) { panic("") }
+func (r *PostgresqlUserRepository) GetByIsid(isid string) (*entity.User, error) {
+	cmd := `SELECT id, isid, role, email, created_at, updated_at FROM users WHERE isid = $1;`
 
-func (r *PostgresqlUserRepository) Update(u *entity.User) error { panic("") }
+	row := r.querier.QueryRow(cmd, isid)
 
-func (r *PostgresqlUserRepository) DeleteById(id int) error { panic("") }
+	var u entity.User
+	err := row.Scan(&u.Id, &u.Isid, &u.Role, &u.Email, &u.CreatedAt, &u.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &u, nil
+}
+
+func (r *PostgresqlUserRepository) Update(u *entity.User) error {
+	cmd := `UPDATE users SET isid = $1, role = $2, email = $3, updated_at = $4 WHERE id = $5;`
+	_, err := r.querier.Exec(cmd, u.Isid, u.Role, u.Email, u.UpdatedAt, u.Id)
+	return err
+}
+
+func (r *PostgresqlUserRepository) DeleteById(id int) error {
+	cmd := `DELETE FROM users WHERE id = $1;`
+	_, err := r.querier.Exec(cmd, id)
+	return err
+}
 
 // Ensure implementation
 var _ repository.UserRepository = (*PostgresqlUserRepository)(nil)

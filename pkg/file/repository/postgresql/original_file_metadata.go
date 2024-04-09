@@ -127,7 +127,7 @@ func (r *PostgresqlOriginalFileMetadataRepository) ListByFilenameIsid(filename s
 }
 
 func (r *PostgresqlOriginalFileMetadataRepository) Update(f *entity.OriginalFileMetadata) error {
-	cmd := `UPDATE original_file SET
+	cmd := `UPDATE original_files SET
                 sha256 = $1,
                 filename = $2,
                 file_type = $3,
@@ -143,7 +143,7 @@ func (r *PostgresqlOriginalFileMetadataRepository) Update(f *entity.OriginalFile
 }
 
 func (r *PostgresqlOriginalFileMetadataRepository) DeleteById(id int) error {
-	cmd := `DELETE FROM original_file WHERE id = $1;`
+	cmd := `DELETE FROM original_files WHERE id = $1;`
 
 	_, err := r.querier.Exec(cmd, id)
 	return err
@@ -158,7 +158,7 @@ func (r *PostgresqlOriginalFileMetadataRepository) DeleteByIds(ids []int) error 
 		args[i] = id
 	}
 
-	cmd := fmt.Sprintf(`DELETE FROM original_files WHERE id IN (%s)`, arg_placeholders)
+	cmd := fmt.Sprintf(`DELETE FROM original_files WHERE id IN (%s);`, strings.Join(arg_placeholders, ", "))
 
 	_, err := r.querier.Exec(cmd, args...)
 	return err

@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func ShowTranslatedFiles(c echo.Context, translatedFileUseCase usecase.TranslatedFileMetadataUseCase) error {
+func ShowTranslatedFiles(c echo.Context, translatedFileUseCase *usecase.TranslatedFileMetadataUseCase) error {
 	userProfileValue := c.Get("userProfile")
 	userProfile, ok := userProfileValue.(entity.UserProfile)
 	if !ok {

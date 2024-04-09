@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func TranslateDocx(c echo.Context, translateUseCase usecase.TranslateUseCase) error {
+func TranslateDocx(c echo.Context, translateUseCase *usecase.TranslateUseCase) error {
 	userProfileValue := c.Get("userProfile")
 	userProfile, ok := userProfileValue.(entity.UserProfile)
 	if !ok {
@@ -45,7 +45,7 @@ func TranslateDocx(c echo.Context, translateUseCase usecase.TranslateUseCase) er
 		}
 
 		wg.Add(1)
-		go translateFile(&wg, b, file.Filename, int(file.Size), userProfile.Isid, sourceLang, targetLang, &translateUseCase, errChan)
+		go translateFile(&wg, b, file.Filename, int(file.Size), userProfile.Isid, sourceLang, targetLang, translateUseCase, errChan)
 	}
 
 	wg.Wait()

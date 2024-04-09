@@ -56,7 +56,16 @@ func (uc *TranslateUseCase) TranslateAsync(
 		return errors.New("invalid extension")
 	}
 
-	uc.fileTracker.Add(isid, filename, sourceLang, targetLang, "in progress")
+	fileTrackerKey := fmt.Sprintf("%s_%s", isid, filename)
+
+	uc.fileTracker.Create(
+		fileTrackerKey,
+		&tracker.FileStatus{
+			Status:     "in progress",
+			SourceLang: sourceLang,
+			TargetLang: targetLang,
+		},
+	)
 
 	metadatas, err := uc.originalFileMetaUC.ListByFilenameIsid(filename, isid)
 	if err != nil {
@@ -64,13 +73,29 @@ func (uc *TranslateUseCase) TranslateAsync(
 	}
 
 	if len(metadatas) > 0 {
-		uc.fileTracker.Add(isid, filename, sourceLang, targetLang, "fail:duplicate")
+
+		uc.fileTracker.Create(
+			fileTrackerKey,
+			&tracker.FileStatus{
+				Status:     "fail:duplicate",
+				SourceLang: sourceLang,
+				TargetLang: targetLang,
+			},
+		)
 		return errors.New("failed to check for duplicated files")
 	}
 
 	err = uc.fileUC.Persist(b, fmt.Sprintf("%s/%s", isid, filename))
 	if err != nil {
-		uc.fileTracker.Add(isid, filename, sourceLang, targetLang, "fail:persist")
+
+		uc.fileTracker.Create(
+			fileTrackerKey,
+			&tracker.FileStatus{
+				Status:     "fail:persist",
+				SourceLang: sourceLang,
+				TargetLang: targetLang,
+			},
+		)
 		return errors.New("failed to persist file")
 	}
 
@@ -109,22 +134,45 @@ func (uc *TranslateUseCase) ListenAndExecute() {
 	for range time.Tick(500 * time.Millisecond) {
 		t, key := uc.translateQueue.Take()
 
+		fileTrackerKey := fmt.Sprintf("%s_%s", t.Isid, t.Filename)
+
 		b, err := uc.fileUC.Get(fmt.Sprintf("%s/%s", t.Isid, t.Filename))
 		if err != nil {
-			uc.fileTracker.Add(t.Isid, t.Filename, t.SourceLang, t.TargetLang, "fail:read")
+			uc.fileTracker.Create(
+				fileTrackerKey,
+				&tracker.FileStatus{
+					Status:     "fail:read",
+					SourceLang: t.SourceLang,
+					TargetLang: t.TargetLang,
+				},
+			)
 			continue
 		}
 
 		translated_b, err := uc.Translate(b, t.SourceLang, t.TargetLang)
 		if err != nil {
-			uc.fileTracker.Add(t.Isid, t.Filename, t.SourceLang, t.TargetLang, "fail:translate")
+			uc.fileTracker.Create(
+				fileTrackerKey,
+				&tracker.FileStatus{
+					Status:     "fail:translate",
+					SourceLang: t.SourceLang,
+					TargetLang: t.TargetLang,
+				},
+			)
 			continue
 		}
 
 		translatedFilename := fmt.Sprintf("translated-%s-to-%s-%s", t.SourceLang, t.TargetLang, t.Filename)
 		err = uc.fileUC.Persist(translated_b, fmt.Sprintf("%s/%s", t.Isid, translatedFilename))
 		if err != nil {
-			uc.fileTracker.Add(t.Isid, translatedFilename, t.SourceLang, t.TargetLang, "fail:persist")
+			uc.fileTracker.Create(
+				fileTrackerKey,
+				&tracker.FileStatus{
+					Status:     "fail:persist",
+					SourceLang: t.SourceLang,
+					TargetLang: t.TargetLang,
+				},
+			)
 			continue
 		}
 
@@ -139,7 +187,7 @@ func (uc *TranslateUseCase) ListenAndExecute() {
 			CreatedBy:      t.Isid,
 		})
 
-		uc.fileTracker.Clear(t.Isid, t.Filename)
+		uc.fileTracker.Delete(fileTrackerKey)
 
 		uc.translateQueue.Delete(key)
 	}

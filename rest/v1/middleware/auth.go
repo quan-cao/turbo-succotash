@@ -10,7 +10,7 @@ import (
 
 var devToken = os.Getenv("DEV_TOKEN")
 
-func AuthMiddleware(userUseCase usecase.UserUseCase) echo.MiddlewareFunc {
+func AuthMiddleware(userUseCase *usecase.UserUseCase) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			token := c.Request().Header.Get("Authorization")
