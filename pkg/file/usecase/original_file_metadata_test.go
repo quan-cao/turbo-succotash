@@ -16,7 +16,7 @@ func newMock(t *testing.T) (*gomock.Controller, *mocks.MockOriginalFileMetadataR
 	return ctrl, repo
 }
 
-func TestOriginalFileMetadataUseCase__Persist(t *testing.T) {
+func TestOriginalFileMetadataUseCase_Persist(t *testing.T) {
 	_, repo := newMock(t)
 	uc := NewOriginalFileMetadataUseCase(repo)
 
@@ -35,7 +35,7 @@ func TestOriginalFileMetadataUseCase__Persist(t *testing.T) {
 	}
 }
 
-func TestOriginalFileMetadataUseCase__Persist_Err(t *testing.T) {
+func TestOriginalFileMetadataUseCase_Persist_Err(t *testing.T) {
 	_, repo := newMock(t)
 	uc := NewOriginalFileMetadataUseCase(repo)
 
@@ -54,7 +54,7 @@ func TestOriginalFileMetadataUseCase__Persist_Err(t *testing.T) {
 	}
 }
 
-func TestOriginalFileMetadataUseCase__ListByFilenameIsid(t *testing.T) {
+func TestOriginalFileMetadataUseCase_ListByFilenameIsid(t *testing.T) {
 	_, repo := newMock(t)
 	uc := NewOriginalFileMetadataUseCase(repo)
 
@@ -72,7 +72,7 @@ func TestOriginalFileMetadataUseCase__ListByFilenameIsid(t *testing.T) {
 	}
 }
 
-func TestOriginalFileMetadataUseCase__ListByFilenameIsid_Err(t *testing.T) {
+func TestOriginalFileMetadataUseCase_ListByFilenameIsid_Err(t *testing.T) {
 	_, repo := newMock(t)
 	uc := NewOriginalFileMetadataUseCase(repo)
 

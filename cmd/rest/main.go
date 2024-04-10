@@ -23,6 +23,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -98,7 +99,9 @@ func initUseCases() {
 	}
 	s3Uploader := s3manager.NewUploader(awsSession)
 	s3Downloader := s3manager.NewDownloader(awsSession)
-	fileRepo := fileS3.NewS3FileRepository(s3Uploader, s3Downloader, os.Getenv(ENV_S3_BUCKET_NAME))
+	s3Service := s3.New(awsSession)
+
+	fileRepo := fileS3.NewS3FileRepository(s3Uploader, s3Downloader, s3Service, os.Getenv(ENV_S3_BUCKET_NAME))
 	fileUseCase = fileUC.NewFileUseCase(fileRepo)
 
 	// User

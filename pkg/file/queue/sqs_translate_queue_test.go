@@ -19,7 +19,7 @@ func newMock(t *testing.T, queueUrl string, groupId string) (*mocks.MockSQSAPI, 
 	return mockedClient, queue
 }
 
-func TestSqsTranslateQueue__Add(t *testing.T) {
+func TestSqsTranslateQueue_Add(t *testing.T) {
 	mockedClient, queue := newMock(t, "url", "id")
 
 	task := &TranslateTask{
@@ -45,7 +45,7 @@ func TestSqsTranslateQueue__Add(t *testing.T) {
 	}
 }
 
-func TestSqsTranslateQueue__Add_SendMessageErr(t *testing.T) {
+func TestSqsTranslateQueue_Add_SendMessageErr(t *testing.T) {
 	mockedClient, queue := newMock(t, "url", "id")
 
 	task := &TranslateTask{
@@ -72,7 +72,7 @@ func TestSqsTranslateQueue__Add_SendMessageErr(t *testing.T) {
 	}
 }
 
-func TestSqsTranslateQueue__Take(t *testing.T) {
+func TestSqsTranslateQueue_Take(t *testing.T) {
 	mockedClient, queue := newMock(t, "url", "id")
 
 	task := &TranslateTask{
@@ -119,7 +119,7 @@ func TestSqsTranslateQueue__Take(t *testing.T) {
 	}
 }
 
-func TestSqsTranslateQueue__Take_RetrieveMessageErr(t *testing.T) {
+func TestSqsTranslateQueue_Take_RetrieveMessageErr(t *testing.T) {
 	mockedClient, queue := newMock(t, "url", "id")
 
 	task := &TranslateTask{
@@ -166,7 +166,7 @@ func TestSqsTranslateQueue__Take_RetrieveMessageErr(t *testing.T) {
 	}
 }
 
-func TestSqsTranslateQueue__Delete(t *testing.T) {
+func TestSqsTranslateQueue_Delete(t *testing.T) {
 	mockedClient, queue := newMock(t, "url", "id")
 
 	wantDeleteMessageParam := &sqs.DeleteMessageInput{
@@ -182,7 +182,7 @@ func TestSqsTranslateQueue__Delete(t *testing.T) {
 	}
 }
 
-func TestSqsTranslateQueue__Delete_DeleteMessageErr(t *testing.T) {
+func TestSqsTranslateQueue_Delete_DeleteMessageErr(t *testing.T) {
 	mockedClient, queue := newMock(t, "url", "id")
 
 	wantDeleteMessageParam := &sqs.DeleteMessageInput{

@@ -22,11 +22,16 @@ func TestChannelTranslateQueue(t *testing.T) {
 
 	got, _ := q.Take()
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("expect %v, got %v", want, got)
+		t.Fatalf("expected %v, got %v", want, got)
 	}
 
 	got, _ = q.Take()
 	if got != nil {
-		t.Fatalf("expect nil, got %v", got)
+		t.Fatalf("expected nil, got %v", got)
+	}
+
+	err = q.Delete("key")
+	if err != nil {
+		t.Fatal(err)
 	}
 }

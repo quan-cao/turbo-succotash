@@ -10,7 +10,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-func TestPostgresqlOriginalFileMetadataRepository__Create(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_Create(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 
 	repo := NewPostgresqlUserRepository(db)
@@ -31,7 +31,7 @@ func TestPostgresqlOriginalFileMetadataRepository__Create(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__Create_ScanErr(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_Create_ScanErr(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 
 	repo := NewPostgresqlUserRepository(db)
@@ -52,7 +52,7 @@ func TestPostgresqlOriginalFileMetadataRepository__Create_ScanErr(t *testing.T) 
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__GetByIsid(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_GetByIsid(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 
 	repo := NewPostgresqlUserRepository(db)
@@ -73,7 +73,7 @@ func TestPostgresqlOriginalFileMetadataRepository__GetByIsid(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__GetByIsid_ScanErr(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_GetByIsid_ScanErr(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 
 	repo := NewPostgresqlUserRepository(db)
@@ -94,7 +94,7 @@ func TestPostgresqlOriginalFileMetadataRepository__GetByIsid_ScanErr(t *testing.
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__Update(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_Update(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 
 	repo := NewPostgresqlUserRepository(db)
@@ -109,7 +109,7 @@ func TestPostgresqlOriginalFileMetadataRepository__Update(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__Update_Err(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_Update_Err(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 
 	repo := NewPostgresqlUserRepository(db)
@@ -126,7 +126,7 @@ func TestPostgresqlOriginalFileMetadataRepository__Update_Err(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__DeleteById(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_DeleteById(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 
 	repo := NewPostgresqlUserRepository(db)
@@ -141,7 +141,7 @@ func TestPostgresqlOriginalFileMetadataRepository__DeleteById(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__DeleteById_Err(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_DeleteById_Err(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 
 	repo := NewPostgresqlUserRepository(db)

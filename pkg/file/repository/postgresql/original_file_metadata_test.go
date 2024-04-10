@@ -21,7 +21,7 @@ func newMock(t *testing.T) (sqlmock.Sqlmock, *PostgresqlOriginalFileMetadataRepo
 	return mock, repo
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__Create(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_Create(t *testing.T) {
 	mock, repo := newMock(t)
 	ent := &entity.OriginalFileMetadata{Id: 1}
 
@@ -40,7 +40,7 @@ func TestPostgresqlOriginalFileMetadataRepository__Create(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__Create_ScanErr(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_Create_ScanErr(t *testing.T) {
 	mock, repo := newMock(t)
 	ent := &entity.OriginalFileMetadata{Id: 1}
 
@@ -59,7 +59,7 @@ func TestPostgresqlOriginalFileMetadataRepository__Create_ScanErr(t *testing.T) 
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__ListByIds(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_ListByIds(t *testing.T) {
 	mock, repo := newMock(t)
 
 	want := []*entity.OriginalFileMetadata{{Id: 1}, {Id: 2}}
@@ -82,7 +82,7 @@ func TestPostgresqlOriginalFileMetadataRepository__ListByIds(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__ListByIds_Err(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_ListByIds_Err(t *testing.T) {
 	mock, repo := newMock(t)
 
 	columns := []string{"id", "sha256", "filename", "file_type", "file_size", "source_language", "token_count", "created_at", "updated_at", "created_by"}
@@ -103,7 +103,7 @@ func TestPostgresqlOriginalFileMetadataRepository__ListByIds_Err(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__ListByIsid(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_ListByIsid(t *testing.T) {
 	mock, repo := newMock(t)
 
 	want := []*entity.OriginalFileMetadata{{Id: 1}, {Id: 2}}
@@ -127,7 +127,7 @@ func TestPostgresqlOriginalFileMetadataRepository__ListByIsid(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__ListByIsid_Err(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_ListByIsid_Err(t *testing.T) {
 	mock, repo := newMock(t)
 
 	columns := []string{"id", "sha256", "filename", "file_type", "file_size", "source_language", "token_count", "created_at", "updated_at", "created_by"}
@@ -146,7 +146,7 @@ func TestPostgresqlOriginalFileMetadataRepository__ListByIsid_Err(t *testing.T) 
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__ListByFilenameIsid(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_ListByFilenameIsid(t *testing.T) {
 	mock, repo := newMock(t)
 
 	want := []*entity.OriginalFileMetadata{{Id: 1}, {Id: 2}}
@@ -170,7 +170,7 @@ func TestPostgresqlOriginalFileMetadataRepository__ListByFilenameIsid(t *testing
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__ListByFilenameIsid_Err(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_ListByFilenameIsid_Err(t *testing.T) {
 	mock, repo := newMock(t)
 
 	columns := []string{"id", "sha256", "filename", "file_type", "file_size", "source_language", "token_count", "created_at", "updated_at", "created_by"}
@@ -189,7 +189,7 @@ func TestPostgresqlOriginalFileMetadataRepository__ListByFilenameIsid_Err(t *tes
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__Update(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_Update(t *testing.T) {
 	mock, repo := newMock(t)
 	ent := &entity.OriginalFileMetadata{}
 
@@ -202,7 +202,7 @@ func TestPostgresqlOriginalFileMetadataRepository__Update(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__Update_Err(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_Update_Err(t *testing.T) {
 	mock, repo := newMock(t)
 	ent := &entity.OriginalFileMetadata{}
 
@@ -216,7 +216,7 @@ func TestPostgresqlOriginalFileMetadataRepository__Update_Err(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__DeleteById(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_DeleteById(t *testing.T) {
 	mock, repo := newMock(t)
 	id := 1
 
@@ -229,7 +229,7 @@ func TestPostgresqlOriginalFileMetadataRepository__DeleteById(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__DeleteById_Err(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_DeleteById_Err(t *testing.T) {
 	mock, repo := newMock(t)
 	id := 1
 
@@ -243,7 +243,7 @@ func TestPostgresqlOriginalFileMetadataRepository__DeleteById_Err(t *testing.T) 
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__DeleteByIds(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_DeleteByIds(t *testing.T) {
 	mock, repo := newMock(t)
 	ids := []int{1, 2, 3}
 
@@ -256,7 +256,7 @@ func TestPostgresqlOriginalFileMetadataRepository__DeleteByIds(t *testing.T) {
 	}
 }
 
-func TestPostgresqlOriginalFileMetadataRepository__DeleteByIds_Err(t *testing.T) {
+func TestPostgresqlOriginalFileMetadataRepository_DeleteByIds_Err(t *testing.T) {
 	mock, repo := newMock(t)
 	ids := []int{1, 2, 3}
 

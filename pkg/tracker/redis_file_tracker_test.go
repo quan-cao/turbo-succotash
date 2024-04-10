@@ -10,7 +10,7 @@ import (
 	"github.com/go-redis/redismock/v9"
 )
 
-func TestRedisFileTracker__Create(t *testing.T) {
+func TestRedisFileTracker_Create(t *testing.T) {
 	client, mock := redismock.NewClusterMock()
 
 	key := "new_key"
@@ -47,7 +47,7 @@ func TestRedisFileTracker__Create(t *testing.T) {
 	}
 }
 
-func TestRedisFileTracker__Get(t *testing.T) {
+func TestRedisFileTracker_Get(t *testing.T) {
 	client, mock := redismock.NewClusterMock()
 
 	key := "new_key"
