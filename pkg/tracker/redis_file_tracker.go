@@ -18,7 +18,7 @@ func NewRedisFileTracker(r *redis.ClusterClient, invalidationTime int) *RedisFil
 	return &RedisFileTracker{r, invalidationTime}
 }
 
-func (t *RedisFileTracker) Create(key string, status *FileStatus) error {
+func (t *RedisFileTracker) Create(status *FileStatus) error {
 	duration := time.Duration(0)
 
 	if strings.HasPrefix(status.Status, "fail:") {
@@ -32,7 +32,7 @@ func (t *RedisFileTracker) Create(key string, status *FileStatus) error {
 		return err
 	}
 
-	if err := t.r.Set(context.Background(), key, progressJson, duration).Err(); err != nil {
+	if err := t.r.Set(context.Background(), status.Key, progressJson, duration).Err(); err != nil {
 		return err
 	}
 

@@ -15,7 +15,7 @@ func TestRedisFileTracker_Create(t *testing.T) {
 	client, mock := redismock.NewClusterMock()
 
 	key := "new_key"
-	status := &FileStatus{Status: "fail:status"}
+	status := &FileStatus{Key: key, Status: "fail:status"}
 	val, _ := json.Marshal(status)
 
 	mock.
@@ -42,7 +42,7 @@ func TestRedisFileTracker_Create(t *testing.T) {
 
 	tracker := NewRedisFileTracker(client, 0)
 
-	err := tracker.Create(key, status)
+	err := tracker.Create(status)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestRedisFileTracker_Create_Err(t *testing.T) {
 	client, mock := redismock.NewClusterMock()
 
 	key := "new_key"
-	status := &FileStatus{Status: "status"}
+	status := &FileStatus{Key: key, Status: "status"}
 	val, _ := json.Marshal(status)
 
 	e := errors.New("set err")
@@ -83,7 +83,7 @@ func TestRedisFileTracker_Create_Err(t *testing.T) {
 
 	tracker := NewRedisFileTracker(client, 0)
 
-	err := tracker.Create(key, status)
+	err := tracker.Create(status)
 	if err != e {
 		t.Fatalf("expected %v, got %v", e, err)
 	}
@@ -97,7 +97,7 @@ func TestRedisFileTracker_Get(t *testing.T) {
 	client, mock := redismock.NewClusterMock()
 
 	key := "new_key"
-	want := &FileStatus{Status: "status"}
+	want := &FileStatus{Key: key, Status: "status"}
 	val, _ := json.Marshal(want)
 
 	mock.ExpectGet(key).SetVal(string(val))

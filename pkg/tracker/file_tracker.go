@@ -19,7 +19,7 @@ type FileStatus struct {
 
 type FileTracker interface {
 	Get(key string) (*FileStatus, error)
-	Create(key string, fileProgress *FileTrackerInput) error
+	Create(status *FileStatus) error
 	Delete(key string) error
 	List(pat string) ([]*FileStatus, error)
 	Clear() error

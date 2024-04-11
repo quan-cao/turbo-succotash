@@ -59,14 +59,12 @@ func (uc *TranslateUseCase) TranslateAsync(
 
 	fileTrackerKey := fmt.Sprintf("%s_%s", isid, filename)
 
-	uc.fileTracker.Create(
-		fileTrackerKey,
-		&tracker.FileStatus{
-			Status:     "in progress",
-			SourceLang: sourceLang,
-			TargetLang: targetLang,
-		},
-	)
+	uc.fileTracker.Create(&tracker.FileStatus{
+		Key:        fileTrackerKey,
+		Status:     "in progress",
+		SourceLang: sourceLang,
+		TargetLang: targetLang,
+	})
 
 	metadatas, err := uc.originalFileMetaUC.ListByFilenameIsid(filename, isid)
 	if err != nil {
@@ -74,29 +72,23 @@ func (uc *TranslateUseCase) TranslateAsync(
 	}
 
 	if len(metadatas) > 0 {
-
-		uc.fileTracker.Create(
-			fileTrackerKey,
-			&tracker.FileStatus{
-				Status:     "fail:duplicate",
-				SourceLang: sourceLang,
-				TargetLang: targetLang,
-			},
-		)
+		uc.fileTracker.Create(&tracker.FileStatus{
+			Key:        fileTrackerKey,
+			Status:     "fail:duplicate",
+			SourceLang: sourceLang,
+			TargetLang: targetLang,
+		})
 		return errors.New("failed to check for duplicated files")
 	}
 
 	err = uc.fileUC.Persist(b, fmt.Sprintf("%s/%s", isid, filename))
 	if err != nil {
-
-		uc.fileTracker.Create(
-			fileTrackerKey,
-			&tracker.FileStatus{
-				Status:     "fail:persist",
-				SourceLang: sourceLang,
-				TargetLang: targetLang,
-			},
-		)
+		uc.fileTracker.Create(&tracker.FileStatus{
+			Key:        fileTrackerKey,
+			Status:     "fail:persist",
+			SourceLang: sourceLang,
+			TargetLang: targetLang,
+		})
 		return errors.New("failed to persist file")
 	}
 
@@ -139,41 +131,35 @@ func (uc *TranslateUseCase) ExecuteQueue() error {
 
 	b, err := uc.fileUC.Get(fmt.Sprintf("%s/%s", t.Isid, t.Filename))
 	if err != nil {
-		uc.fileTracker.Create(
-			fileTrackerKey,
-			&tracker.FileStatus{
-				Status:     "fail:read",
-				SourceLang: t.SourceLang,
-				TargetLang: t.TargetLang,
-			},
-		)
+		uc.fileTracker.Create(&tracker.FileStatus{
+			Key:        fileTrackerKey,
+			Status:     "fail:read",
+			SourceLang: t.SourceLang,
+			TargetLang: t.TargetLang,
+		})
 		return err
 	}
 
 	translated_b, err := uc.Translate(b, t.SourceLang, t.TargetLang)
 	if err != nil {
-		uc.fileTracker.Create(
-			fileTrackerKey,
-			&tracker.FileStatus{
-				Status:     "fail:translate",
-				SourceLang: t.SourceLang,
-				TargetLang: t.TargetLang,
-			},
-		)
+		uc.fileTracker.Create(&tracker.FileStatus{
+			Key:        fileTrackerKey,
+			Status:     "fail:translate",
+			SourceLang: t.SourceLang,
+			TargetLang: t.TargetLang,
+		})
 		return err
 	}
 
 	translatedFilename := fmt.Sprintf("translated-%s-to-%s-%s", t.SourceLang, t.TargetLang, t.Filename)
 	err = uc.fileUC.Persist(translated_b, fmt.Sprintf("%s/%s", t.Isid, translatedFilename))
 	if err != nil {
-		uc.fileTracker.Create(
-			fileTrackerKey,
-			&tracker.FileStatus{
-				Status:     "fail:persist",
-				SourceLang: t.SourceLang,
-				TargetLang: t.TargetLang,
-			},
-		)
+		uc.fileTracker.Create(&tracker.FileStatus{
+			Key:        fileTrackerKey,
+			Status:     "fail:persist",
+			SourceLang: t.SourceLang,
+			TargetLang: t.TargetLang,
+		})
 		return err
 	}
 

@@ -157,7 +157,6 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// TODO: Middleware
 	e.POST("/translate-docx", func(c echo.Context) error { return handler.TranslateDocx(c, translateUseCase) }, myMiddleware.AuthMiddleware(userUseCase))
 
 	ctx, cancel := context.WithCancel(context.Background())
