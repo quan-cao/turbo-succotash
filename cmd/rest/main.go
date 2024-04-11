@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"database/sql"
 	"doc-translate-go/pkg/file/queue"
@@ -159,7 +160,10 @@ func main() {
 	// TODO: Middleware
 	e.POST("/translate-docx", func(c echo.Context) error { return handler.TranslateDocx(c, translateUseCase) }, myMiddleware.AuthMiddleware(userUseCase))
 
-	go translateUseCase.ListenAndExecute()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go translateUseCase.ListenAndExecute(ctx)
 
 	e.Start(os.Getenv(ENV_ADDR))
 }

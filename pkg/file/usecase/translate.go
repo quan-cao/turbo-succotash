@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"doc-translate-go/pkg/file/entity"
 	"doc-translate-go/pkg/file/queue"
 	"doc-translate-go/pkg/tracker"
@@ -130,65 +131,80 @@ func (uc *TranslateUseCase) TranslateAsync(
 	return nil
 }
 
-func (uc *TranslateUseCase) ListenAndExecute() {
-	for range time.Tick(500 * time.Millisecond) {
-		t, key := uc.translateQueue.Take()
+// ExecuteQueue takes one message out of the queue and performs translating.
+func (uc *TranslateUseCase) ExecuteQueue() error {
+	t, key := uc.translateQueue.Take()
 
-		fileTrackerKey := fmt.Sprintf("%s_%s", t.Isid, t.Filename)
+	fileTrackerKey := fmt.Sprintf("%s_%s", t.Isid, t.Filename)
 
-		b, err := uc.fileUC.Get(fmt.Sprintf("%s/%s", t.Isid, t.Filename))
-		if err != nil {
-			uc.fileTracker.Create(
-				fileTrackerKey,
-				&tracker.FileStatus{
-					Status:     "fail:read",
-					SourceLang: t.SourceLang,
-					TargetLang: t.TargetLang,
-				},
-			)
-			continue
+	b, err := uc.fileUC.Get(fmt.Sprintf("%s/%s", t.Isid, t.Filename))
+	if err != nil {
+		uc.fileTracker.Create(
+			fileTrackerKey,
+			&tracker.FileStatus{
+				Status:     "fail:read",
+				SourceLang: t.SourceLang,
+				TargetLang: t.TargetLang,
+			},
+		)
+		return err
+	}
+
+	translated_b, err := uc.Translate(b, t.SourceLang, t.TargetLang)
+	if err != nil {
+		uc.fileTracker.Create(
+			fileTrackerKey,
+			&tracker.FileStatus{
+				Status:     "fail:translate",
+				SourceLang: t.SourceLang,
+				TargetLang: t.TargetLang,
+			},
+		)
+		return err
+	}
+
+	translatedFilename := fmt.Sprintf("translated-%s-to-%s-%s", t.SourceLang, t.TargetLang, t.Filename)
+	err = uc.fileUC.Persist(translated_b, fmt.Sprintf("%s/%s", t.Isid, translatedFilename))
+	if err != nil {
+		uc.fileTracker.Create(
+			fileTrackerKey,
+			&tracker.FileStatus{
+				Status:     "fail:persist",
+				SourceLang: t.SourceLang,
+				TargetLang: t.TargetLang,
+			},
+		)
+		return err
+	}
+
+	now := time.Now()
+	uc.translatedFileMetaUC.Persist(&entity.TranslatedFileMetadata{
+		OriginalFileId: t.OriginalFileId,
+		Filename:       translatedFilename,
+		TargetLanguage: t.TargetLang,
+		Cost:           0,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		CreatedBy:      t.Isid,
+	})
+
+	uc.fileTracker.Delete(fileTrackerKey)
+
+	uc.translateQueue.Delete(key)
+
+	return nil
+}
+
+// ListenAndExecute polls from translate queue and performs translating one message by another.
+func (uc *TranslateUseCase) ListenAndExecute(ctx context.Context) {
+	ticker := time.NewTicker(500 * time.Millisecond)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			uc.ExecuteQueue()
 		}
-
-		translated_b, err := uc.Translate(b, t.SourceLang, t.TargetLang)
-		if err != nil {
-			uc.fileTracker.Create(
-				fileTrackerKey,
-				&tracker.FileStatus{
-					Status:     "fail:translate",
-					SourceLang: t.SourceLang,
-					TargetLang: t.TargetLang,
-				},
-			)
-			continue
-		}
-
-		translatedFilename := fmt.Sprintf("translated-%s-to-%s-%s", t.SourceLang, t.TargetLang, t.Filename)
-		err = uc.fileUC.Persist(translated_b, fmt.Sprintf("%s/%s", t.Isid, translatedFilename))
-		if err != nil {
-			uc.fileTracker.Create(
-				fileTrackerKey,
-				&tracker.FileStatus{
-					Status:     "fail:persist",
-					SourceLang: t.SourceLang,
-					TargetLang: t.TargetLang,
-				},
-			)
-			continue
-		}
-
-		now := time.Now()
-		uc.translatedFileMetaUC.Persist(&entity.TranslatedFileMetadata{
-			OriginalFileId: t.OriginalFileId,
-			Filename:       translatedFilename,
-			TargetLanguage: t.TargetLang,
-			Cost:           0,
-			CreatedAt:      now,
-			UpdatedAt:      now,
-			CreatedBy:      t.Isid,
-		})
-
-		uc.fileTracker.Delete(fileTrackerKey)
-
-		uc.translateQueue.Delete(key)
 	}
 }

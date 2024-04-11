@@ -3,7 +3,6 @@ package tracker
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -34,7 +33,7 @@ func (t *RedisFileTracker) Create(key string, status *FileStatus) error {
 	}
 
 	if err := t.r.Set(context.Background(), key, progressJson, duration).Err(); err != nil {
-		return fmt.Errorf("failed to set progress: %v", err)
+		return err
 	}
 
 	return nil

@@ -2,4 +2,4 @@
 
 ## Pre-requisite
 
-Golang 1.21.1
+Golang 1.21
