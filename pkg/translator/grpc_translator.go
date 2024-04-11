@@ -2,13 +2,10 @@ package translator
 
 import (
 	"context"
-	"os"
 	"time"
 
 	documentprotov1 "doc-translate-go/proto/gen/go/proto/documentprocessor/v1"
 )
-
-var translate_grpc_endpoint = os.Getenv("TRANSLATE_GRPC_ENDPOINT")
 
 // GrpcTranslator makes gRPC call to another service to translate documents
 type GrpcTranslator struct {

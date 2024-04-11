@@ -20,3 +20,15 @@ func (uc *TranslatedFileMetadataUseCase) Persist(f *entity.TranslatedFileMetadat
 func (uc *TranslatedFileMetadataUseCase) ListByIsid(isid string) ([]*entity.TranslatedFileMetadata, error) {
 	return uc.repo.ListByIsid(isid)
 }
+
+func (uc *TranslatedFileMetadataUseCase) ListByIds(ids []int) ([]*entity.TranslatedFileMetadata, error) {
+	return uc.repo.ListByIds(ids)
+}
+
+func (uc *TranslatedFileMetadataUseCase) ListOriginalFileIdsByIds(ids []int) ([]int, error) {
+	return uc.repo.ListOriginalFileIdsByIds(ids)
+}
+
+func (uc *TranslatedFileMetadataUseCase) DeleteByIds(ids []int) error {
+	return uc.repo.DeleteByIds(ids)
+}

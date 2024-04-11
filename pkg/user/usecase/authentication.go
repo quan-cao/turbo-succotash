@@ -12,25 +12,29 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
+	"time"
 )
 
 var (
-	authTokenEndpoint      = os.Getenv("AUTH_TOKEN_DOMAIN")
-	authEndpoint           = os.Getenv("AUTH_DOMAIN")
-	authIntrospectEndpoing = os.Getenv("AUTH_INTROSPECT_DOMAIN")
-	authUserInfoEndpoint   = os.Getenv("AUTH_USERINFO_DOMAIN")
-	clientId               = os.Getenv("CLIENT_ID")
-	clientSecret           = os.Getenv("CLIENT_SECRET")
+	authTokenEndpoint          = os.Getenv("AUTH_TOKEN_DOMAIN")
+	authEndpoint               = os.Getenv("AUTH_DOMAIN")
+	authIntrospectEndpoing     = os.Getenv("AUTH_INTROSPECT_DOMAIN")
+	authUserInfoEndpoint       = os.Getenv("AUTH_USERINFO_DOMAIN")
+	authClientId               = os.Getenv("AUTH_CLIENT_ID")
+	authClientSecret           = os.Getenv("AUTH_CLIENT_SECRET")
+	authDistributionListDomain = os.Getenv("AUTH_DL_DOMAIN")
+	authDistributionList       = strings.Split(strings.TrimSpace(os.Getenv("AUTH_DISTRIBUTION_LIST")), ",")
 )
 
 func newAuthHeader() string {
-	cred := fmt.Sprintf("%s:%s", clientId, clientSecret)
+	cred := fmt.Sprintf("%s:%s", authClientId, authClientSecret)
 	base64Cred := base64.StdEncoding.EncodeToString([]byte(cred))
 	authzHeader := fmt.Sprintf("Basic %s", base64Cred)
 	return authzHeader
 }
 
-func (uc *UserUseCase) RetrieveAccessToken(grantType string, token string) (map[string]any, error) {
+func (uc *UserUseCase) RetrieveAccessToken(grantType string, token string) (string, error) {
 	var codeType string
 
 	switch grantType {
@@ -39,7 +43,7 @@ func (uc *UserUseCase) RetrieveAccessToken(grantType string, token string) (map[
 	case "authorization_code":
 		codeType = "code"
 	default:
-		return nil, fmt.Errorf("invalid grant type %s", grantType)
+		return "", fmt.Errorf("invalid grant type %s", grantType)
 	}
 
 	client := &http.Client{}
@@ -49,7 +53,7 @@ func (uc *UserUseCase) RetrieveAccessToken(grantType string, token string) (map[
 
 	req, err := http.NewRequest("POST", authTokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -57,21 +61,26 @@ func (uc *UserUseCase) RetrieveAccessToken(grantType string, token string) (map[
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	var accessToken map[string]any
-	if err := json.Unmarshal(body, &accessToken); err != nil {
-		return nil, err
+	var bod map[string]any
+	if err := json.Unmarshal(body, &bod); err != nil {
+		return "", err
 	}
-	if _, exists := accessToken["error"]; exists {
-		return nil, errors.New("failed to unmarshal")
+	if _, exists := bod["error"]; exists {
+		return "", errors.New("failed to unmarshal")
+	}
+
+	accessToken, ok := bod["access_token"].(string)
+	if !ok {
+		return "", errors.New("failed to get access token")
 	}
 
 	return accessToken, nil
@@ -80,7 +89,7 @@ func (uc *UserUseCase) RetrieveAccessToken(grantType string, token string) (map[
 func Authorize() (string, error) {
 	params := url.Values{}
 	params.Add("response_type", "code")
-	params.Add("client_id", clientId)
+	params.Add("client_id", authClientId)
 	params.Add("login_method", "form")
 
 	endpoint := authEndpoint + "?" + params.Encode()
@@ -175,4 +184,81 @@ func (uc *UserUseCase) RetrieveUserProfile(accessToken string) (*entity.UserProf
 	}
 
 	return userProfile, nil
+}
+
+type directoryResponse struct {
+	Count int `json:"count"`
+}
+
+func ValidateDistributionListHasIsid(isid string) error {
+	var wg sync.WaitGroup
+	found := false
+	resultChan := make(chan bool, 1)
+	semaphore := make(chan struct{}, 20)
+
+	for _, dl := range authDistributionList {
+		wg.Add(1)
+
+		go func(dl string) {
+			defer wg.Done()
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			if found {
+				return
+			}
+
+			url := fmt.Sprintf("%s/%s/members", authDistributionListDomain, dl)
+			req, err := http.NewRequest("GET", url, nil)
+			if err != nil {
+				return
+			}
+
+			query := req.URL.Query()
+			query.Add("filter", fmt.Sprintf("isid=%s", isid))
+			query.Add("includeNpa", "true")
+			req.URL.RawQuery = query.Encode()
+
+			req.Header.Add("Accept", "application/json")
+			req.Header.Add("X-Merck-APIKey", authClientId)
+
+			client := &http.Client{Timeout: 50 * time.Second}
+
+			resp, err := client.Do(req)
+			if err != nil {
+				return
+			}
+			defer resp.Body.Close()
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return
+			}
+
+			var directory directoryResponse
+			if err := json.Unmarshal(body, &directory); err != nil {
+				return
+			}
+
+			if directory.Count > 0 {
+				select {
+				case resultChan <- true:
+				default:
+				}
+				found = true
+			}
+		}(dl)
+
+		if found {
+			break
+		}
+	}
+
+	wg.Wait()
+	close(resultChan)
+	if !found {
+		return errors.New("403: Forbidden")
+	}
+
+	return nil
 }

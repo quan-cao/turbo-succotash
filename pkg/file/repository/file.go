@@ -7,4 +7,5 @@ type FileRepository interface {
 	Get(filepath string) ([]byte, error)
 	Delete(filepath string) error
 	DeleteMany(filepaths []string) error
+	GetUrl(filepath string) (string, error)
 }

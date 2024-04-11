@@ -17,6 +17,14 @@ func (uc *OriginalFileMetadataUseCase) Persist(f *entity.OriginalFileMetadata) (
 	return uc.repo.Create(f)
 }
 
+func (uc *OriginalFileMetadataUseCase) ListByIds(ids []int) ([]*entity.OriginalFileMetadata, error) {
+	return uc.repo.ListByIds(ids)
+}
+
 func (uc *OriginalFileMetadataUseCase) ListByFilenameIsid(filename string, isid string) ([]*entity.OriginalFileMetadata, error) {
 	return uc.repo.ListByFilenameIsid(filename, isid)
+}
+
+func (uc *OriginalFileMetadataUseCase) DeleteByIds(ids []int) error {
+	return uc.repo.DeleteByIds(ids)
 }

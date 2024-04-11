@@ -3,6 +3,7 @@ package s3
 import (
 	"bytes"
 	"doc-translate-go/pkg/file/repository"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -38,10 +39,13 @@ func (r *S3FileRepository) Persist(b []byte, filepath string) error {
 func (r *S3FileRepository) Get(filepath string) ([]byte, error) {
 	buffer := aws.WriteAtBuffer{}
 
-	_, err := r.downloader.Download(&buffer, &s3.GetObjectInput{
-		Bucket: aws.String(r.bucketName),
-		Key:    aws.String(filepath),
-	})
+	_, err := r.downloader.Download(
+		&buffer,
+		&s3.GetObjectInput{
+			Bucket: aws.String(r.bucketName),
+			Key:    aws.String(filepath),
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +92,24 @@ func (r *S3FileRepository) DeleteMany(filepaths []string) error {
 	}
 
 	return nil
+}
+
+func (r *S3FileRepository) GetUrl(filepath string) (string, error) {
+	return r.generatePresignedUrl(filepath, 15*time.Minute)
+}
+
+func (r *S3FileRepository) generatePresignedUrl(filepath string, expiry time.Duration) (string, error) {
+	req, _ := r.service.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: aws.String(r.bucketName),
+		Key:    aws.String(filepath),
+	})
+
+	url, err := req.Presign(expiry)
+	if err != nil {
+		return "", err
+	}
+
+	return url, nil
 }
 
 // Ensure implementation

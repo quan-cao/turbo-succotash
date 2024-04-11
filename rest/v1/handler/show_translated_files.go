@@ -8,18 +8,19 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func ShowTranslatedFiles(c echo.Context, translatedFileUseCase *usecase.TranslatedFileMetadataUseCase) error {
+func ShowTranslatedFiles(c echo.Context, translatedFileMetadataUseCase *usecase.TranslatedFileMetadataUseCase) error {
 	userProfileValue := c.Get("userProfile")
-	userProfile, ok := userProfileValue.(entity.UserProfile)
+	user, ok := userProfileValue.(entity.UserProfile)
 	if !ok {
+		c.Logger().Error("user profile not found")
 		return echo.ErrBadRequest
 	}
 
-	files, err := translatedFileUseCase.ListByIsid(userProfile.Isid)
+	files, err := translatedFileMetadataUseCase.ListByIsid(user.Isid)
 	if err != nil {
-		return echo.ErrNotFound
+		c.Logger().Error("failed to get translated file metadata: %v", err)
+		return echo.ErrInternalServerError
 	}
 
-	c.JSON(http.StatusOK, files)
-	return nil
+	return c.JSON(http.StatusOK, files)
 }
