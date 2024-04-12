@@ -61,6 +61,7 @@ var (
 	origFileMetaUseCase   *fileUC.OriginalFileMetadataUseCase
 	translFileMetaUseCase *fileUC.TranslatedFileMetadataUseCase
 	translateUseCase      *fileUC.TranslateUseCase
+	progressUseCase       *fileUC.ProgressUseCase
 )
 
 func init() {
@@ -149,6 +150,51 @@ func initUseCases() {
 		redisFileTracker,
 		chanTranslateQueue,
 	)
+
+	progressUseCase = fileUC.NewProgressUseCase(redisFileTracker)
+}
+
+func addRoutes(e *echo.Echo) {
+	e.POST(
+		"/translate-docx",
+		func(c echo.Context) error { return handler.TranslateDocx(c, translateUseCase) },
+		myMiddleware.AuthMiddleware(userUseCase),
+	)
+
+	e.DELETE(
+		"/delete-translated-files",
+		func(c echo.Context) error {
+			return handler.DeleteFiles(c, userUseCase, origFileMetaUseCase, translFileMetaUseCase, fileUseCase)
+		},
+		myMiddleware.AuthMiddleware(userUseCase),
+	)
+
+	e.POST(
+		"/download-translated-files",
+		func(c echo.Context) error {
+			return handler.DownloadTranslatedFiles(c, translFileMetaUseCase, fileUseCase)
+		},
+		myMiddleware.AuthMiddleware(userUseCase),
+	)
+
+	e.GET(
+		"/show-translated-files",
+		func(c echo.Context) error {
+			return handler.ShowTranslatedFiles(c, translFileMetaUseCase)
+		},
+		myMiddleware.AuthMiddleware(userUseCase),
+	)
+
+	e.GET(
+		"/upload-progress",
+		func(c echo.Context) error {
+			return handler.UploadProgress(c, progressUseCase)
+		},
+	)
+
+	e.GET("/authorize", func(c echo.Context) error { return handler.Authorize(c, userUseCase) })
+
+	e.GET("/token", func(c echo.Context) error { return handler.Token(c, userUseCase) })
 }
 
 func main() {
@@ -157,7 +203,7 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	e.POST("/translate-docx", func(c echo.Context) error { return handler.TranslateDocx(c, translateUseCase) }, myMiddleware.AuthMiddleware(userUseCase))
+	addRoutes(e)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func UploadProgress(c echo.Context, progressUseCase usecase.ProgressUseCase) error {
+func UploadProgress(c echo.Context, progressUseCase *usecase.ProgressUseCase) error {
 	type Status struct {
 		File       string    `json:"file"`
 		Status     string    `json:"status"`
