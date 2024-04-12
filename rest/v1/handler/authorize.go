@@ -7,8 +7,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func Authorize(c echo.Context, userUseCase *usecase.UserUseCase) error {
-	redirectUrl, err := usecase.Authorize()
+func Authorize(c echo.Context, authUseCase *usecase.AuthUseCase) error {
+	redirectUrl, err := authUseCase.Authorize()
 	if err != nil {
 		c.Logger().Errorf("failed to authorize: %v", err)
 		return echo.ErrBadRequest

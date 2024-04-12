@@ -10,7 +10,7 @@ import (
 
 var devToken = os.Getenv("DEV_TOKEN")
 
-func AuthMiddleware(userUseCase *usecase.UserUseCase) echo.MiddlewareFunc {
+func AuthMiddleware(userUseCase *usecase.UserUseCase, authUseCase *usecase.AuthUseCase) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			token := c.Request().Header.Get("Authorization")
@@ -26,7 +26,7 @@ func AuthMiddleware(userUseCase *usecase.UserUseCase) echo.MiddlewareFunc {
 					Email:      "developer@merck.com",
 				}
 			} else {
-				userProfile, err = userUseCase.RetrieveUserProfile(token)
+				userProfile, err = authUseCase.RetrieveUserProfile(token)
 				if err != nil {
 					return echo.ErrUnauthorized
 				}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"doc-translate-go/pkg/config"
 	"doc-translate-go/pkg/file/queue"
 	filePG "doc-translate-go/pkg/file/repository/postgresql"
 	fileS3 "doc-translate-go/pkg/file/repository/s3"
@@ -17,10 +18,6 @@ import (
 	myMiddleware "doc-translate-go/rest/v1/middleware"
 	"fmt"
 	"log"
-	"net/url"
-	"os"
-	"strconv"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -34,29 +31,13 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const (
-	ENV_ADDR = "ADDR"
-
-	ENV_DB_PASS = "DB_PASSWORD"
-	ENV_DB_USER = "DB_USERNAME"
-	ENV_DB_HOST = "DB_HOST"
-	ENV_DB_PORT = "DB_PORT"
-	ENV_DB_NAME = "DB"
-
-	ENV_S3_BUCKET_NAME = "S3_BUCKET_NAME"
-	ENV_AWS_REGION     = "AWS_REGION"
-
-	ENV_TRANSLATE_GRPC_SERVER = "TRANSLATE_GRPC_SERVER"
-
-	ENV_REDIS_ADDRS              = "REDIS_ADDRS"
-	ENV_REDIS_PASS               = "REDIS_AUTH_TOKEN"
-	ENV_REDIS_EXPIRATION_SECONDS = "REDIS_EXPIRATION_SECONDS"
-)
-
 var (
+	conf = config.NewConfig()
+
 	db *sql.DB
 
 	userUseCase           *userUC.UserUseCase
+	authUseCase           *userUC.AuthUseCase
 	fileUseCase           *fileUC.FileUseCase
 	origFileMetaUseCase   *fileUC.OriginalFileMetadataUseCase
 	translFileMetaUseCase *fileUC.TranslatedFileMetadataUseCase
@@ -72,12 +53,7 @@ func init() {
 func initDb() {
 	var err error
 
-	pass := url.QueryEscape(os.Getenv(ENV_DB_PASS))
-	username := os.Getenv(ENV_DB_USER)
-	host := os.Getenv(ENV_DB_HOST)
-	port := os.Getenv(ENV_DB_PORT)
-	dbname := os.Getenv(ENV_DB_NAME)
-	uri := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", username, pass, host, port, dbname)
+	uri := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", conf.Db.Username, conf.Db.Password, conf.Db.Host, conf.Db.Port, conf.Db.DbName)
 
 	db, err = sql.Open("postgres", uri)
 	if err != nil {
@@ -95,7 +71,7 @@ func initUseCases() {
 	translFileMetaUseCase = fileUC.NewTranslatedFileMetadataUseCase(translFileMetaRepo)
 
 	// File
-	awsSession, err := session.NewSession(&aws.Config{Region: aws.String(os.Getenv(ENV_AWS_REGION))})
+	awsSession, err := session.NewSession(&aws.Config{Region: aws.String(conf.Aws.Region)})
 	if err != nil {
 		log.Fatalf("unable to get aws session: %v", err)
 	}
@@ -103,34 +79,34 @@ func initUseCases() {
 	s3Downloader := s3manager.NewDownloader(awsSession)
 	s3Service := s3.New(awsSession)
 
-	fileRepo := fileS3.NewS3FileRepository(s3Uploader, s3Downloader, s3Service, os.Getenv(ENV_S3_BUCKET_NAME))
+	fileRepo := fileS3.NewS3FileRepository(s3Uploader, s3Downloader, s3Service, conf.Aws.S3BucketName)
 	fileUseCase = fileUC.NewFileUseCase(fileRepo)
 
 	// User
 	userRepo := userPG.NewPostgresqlUserRepository(db)
-	userUseCase = userUC.New(userRepo)
+	userUseCase = userUC.NewUserUseCase(userRepo)
+
+	// Auth
+	authUseCase = userUC.NewAuthUseCase(conf.Auth)
 
 	// File Tracker
-	grpcConn, err := grpc.Dial(os.Getenv(ENV_TRANSLATE_GRPC_SERVER), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpcConn, err := grpc.Dial(conf.Translate.GrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("unable to dial translate grpc server: %v", err)
 	}
 	grpcClient := documentprotov1.NewDocumentProcessorClient(grpcConn)
 	grpcTranslator := translator.NewGrpcTranslator(grpcClient)
 
-	redisAddrs := strings.Split(os.Getenv(ENV_REDIS_ADDRS), ",")
 	redisClient := redis.NewClusterClient(&redis.ClusterOptions{
-		Addrs:     redisAddrs,
-		Password:  os.Getenv(ENV_REDIS_PASS),
+		Addrs:     conf.Redis.Addrs,
+		Password:  conf.Redis.Password,
 		TLSConfig: &tls.Config{InsecureSkipVerify: true},
 	})
 
-	expirationSecondsStr := os.Getenv(ENV_REDIS_EXPIRATION_SECONDS)
-	expirationSeconds, err := strconv.Atoi(expirationSecondsStr)
 	if err != nil {
 		log.Fatalf("failed to parse redis expiration: %v", err)
 	}
-	redisFileTracker := tracker.NewRedisFileTracker(redisClient, expirationSeconds)
+	redisFileTracker := tracker.NewRedisFileTracker(redisClient, conf.Redis.ExpirySeconds)
 
 	err = redisFileTracker.Clear()
 	if err != nil {
@@ -158,7 +134,7 @@ func addRoutes(e *echo.Echo) {
 	e.POST(
 		"/translate-docx",
 		func(c echo.Context) error { return handler.TranslateDocx(c, translateUseCase) },
-		myMiddleware.AuthMiddleware(userUseCase),
+		myMiddleware.AuthMiddleware(userUseCase, authUseCase),
 	)
 
 	e.DELETE(
@@ -166,7 +142,7 @@ func addRoutes(e *echo.Echo) {
 		func(c echo.Context) error {
 			return handler.DeleteFiles(c, userUseCase, origFileMetaUseCase, translFileMetaUseCase, fileUseCase)
 		},
-		myMiddleware.AuthMiddleware(userUseCase),
+		myMiddleware.AuthMiddleware(userUseCase, authUseCase),
 	)
 
 	e.POST(
@@ -174,7 +150,7 @@ func addRoutes(e *echo.Echo) {
 		func(c echo.Context) error {
 			return handler.DownloadTranslatedFiles(c, translFileMetaUseCase, fileUseCase)
 		},
-		myMiddleware.AuthMiddleware(userUseCase),
+		myMiddleware.AuthMiddleware(userUseCase, authUseCase),
 	)
 
 	e.GET(
@@ -182,7 +158,7 @@ func addRoutes(e *echo.Echo) {
 		func(c echo.Context) error {
 			return handler.ShowTranslatedFiles(c, translFileMetaUseCase)
 		},
-		myMiddleware.AuthMiddleware(userUseCase),
+		myMiddleware.AuthMiddleware(userUseCase, authUseCase),
 	)
 
 	e.GET(
@@ -192,9 +168,9 @@ func addRoutes(e *echo.Echo) {
 		},
 	)
 
-	e.GET("/authorize", func(c echo.Context) error { return handler.Authorize(c, userUseCase) })
+	e.GET("/authorize", func(c echo.Context) error { return handler.Authorize(c, authUseCase) })
 
-	e.GET("/token", func(c echo.Context) error { return handler.Token(c, userUseCase) })
+	e.GET("/token", func(c echo.Context) error { return handler.Token(c, authUseCase) })
 }
 
 func main() {
@@ -210,5 +186,5 @@ func main() {
 
 	go translateUseCase.ListenAndExecute(ctx)
 
-	e.Start(os.Getenv(ENV_ADDR))
+	e.Start(conf.App.Addr)
 }

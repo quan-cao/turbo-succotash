@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func Token(c echo.Context, userUseCase *usecase.UserUseCase) error {
+func Token(c echo.Context, authUseCase *usecase.AuthUseCase) error {
 	type Request struct {
 		GrantType string `json:"grant_type"`
 		Token     string `json:"token"`
@@ -20,19 +20,19 @@ func Token(c echo.Context, userUseCase *usecase.UserUseCase) error {
 		return echo.ErrBadRequest
 	}
 
-	accessToken, err := userUseCase.RetrieveAccessToken(req.GrantType, req.Token)
+	accessToken, err := authUseCase.RetrieveAccessToken(req.GrantType, req.Token)
 	if err != nil {
 		c.Logger().Errorf("failed to retrieve access token: %v", err)
 		return echo.ErrBadRequest
 	}
 
-	user, err := userUseCase.RetrieveUserProfile(accessToken)
+	user, err := authUseCase.RetrieveUserProfile(accessToken)
 	if err != nil {
 		c.Logger().Errorf("failed to retrieve user profile: %v", err)
 		return echo.ErrInternalServerError
 	}
 
-	err = usecase.ValidateDistributionListHasIsid(user.Isid)
+	err = authUseCase.ValidateDistributionListHasIsid(user.Isid)
 	if err != nil {
 		c.Logger().Errorf("user not in distribution list: %v", err)
 		return echo.ErrUnauthorized

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"bytes"
+	"doc-translate-go/pkg/config"
 	"doc-translate-go/pkg/user/entity"
 	"encoding/base64"
 	"encoding/json"
@@ -10,31 +11,27 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
 )
 
-var (
-	authTokenEndpoint          = os.Getenv("AUTH_TOKEN_DOMAIN")
-	authEndpoint               = os.Getenv("AUTH_DOMAIN")
-	authIntrospectEndpoing     = os.Getenv("AUTH_INTROSPECT_DOMAIN")
-	authUserInfoEndpoint       = os.Getenv("AUTH_USERINFO_DOMAIN")
-	authClientId               = os.Getenv("AUTH_CLIENT_ID")
-	authClientSecret           = os.Getenv("AUTH_CLIENT_SECRET")
-	authDistributionListDomain = os.Getenv("AUTH_DL_DOMAIN")
-	authDistributionList       = strings.Split(strings.TrimSpace(os.Getenv("AUTH_DISTRIBUTION_LIST")), ",")
-)
-
-func newAuthHeader() string {
-	cred := fmt.Sprintf("%s:%s", authClientId, authClientSecret)
+func newAuthHeader(clientId string, clientSecret string) string {
+	cred := fmt.Sprintf("%s:%s", clientId, clientSecret)
 	base64Cred := base64.StdEncoding.EncodeToString([]byte(cred))
 	authzHeader := fmt.Sprintf("Basic %s", base64Cred)
 	return authzHeader
 }
 
-func (uc *UserUseCase) RetrieveAccessToken(grantType string, token string) (string, error) {
+type AuthUseCase struct {
+	authConfig *config.AuthConfig
+}
+
+func NewAuthUseCase(authConfig *config.AuthConfig) *AuthUseCase {
+	return &AuthUseCase{authConfig}
+}
+
+func (uc *AuthUseCase) RetrieveAccessToken(grantType string, token string) (string, error) {
 	var codeType string
 
 	switch grantType {
@@ -51,13 +48,13 @@ func (uc *UserUseCase) RetrieveAccessToken(grantType string, token string) (stri
 	data.Set("grant_type", grantType)
 	data.Set(codeType, token)
 
-	req, err := http.NewRequest("POST", authTokenEndpoint, strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", uc.authConfig.TokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
 		return "", err
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", newAuthHeader())
+	req.Header.Add("Authorization", newAuthHeader(uc.authConfig.ClientId, uc.authConfig.ClientSecret))
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -86,13 +83,13 @@ func (uc *UserUseCase) RetrieveAccessToken(grantType string, token string) (stri
 	return accessToken, nil
 }
 
-func Authorize() (string, error) {
+func (uc *AuthUseCase) Authorize() (string, error) {
 	params := url.Values{}
 	params.Add("response_type", "code")
-	params.Add("client_id", authClientId)
+	params.Add("client_id", uc.authConfig.ClientId)
 	params.Add("login_method", "form")
 
-	endpoint := authEndpoint + "?" + params.Encode()
+	endpoint := uc.authConfig.AuthEndpoint + "?" + params.Encode()
 
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -114,18 +111,18 @@ func Authorize() (string, error) {
 	return redirectUrl, nil
 }
 
-func IntrospectAccessToken(accessToken string) (string, error) {
+func (uc *AuthUseCase) IntrospectAccessToken(accessToken string) (string, error) {
 	data := url.Values{}
 	data.Set("token", accessToken)
 	data.Set("token_type_hint", "access_token")
 
-	req, err := http.NewRequest("POST", authIntrospectEndpoing, bytes.NewBufferString(data.Encode()))
+	req, err := http.NewRequest("POST", uc.authConfig.IntrospectEndpoint, bytes.NewBufferString(data.Encode()))
 	if err != nil {
 		return "", err
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", newAuthHeader())
+	req.Header.Add("Authorization", newAuthHeader(uc.authConfig.ClientId, uc.authConfig.ClientSecret))
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -153,14 +150,14 @@ func IntrospectAccessToken(accessToken string) (string, error) {
 	return username, nil
 }
 
-func (uc *UserUseCase) RetrieveUserProfile(accessToken string) (*entity.UserProfile, error) {
-	_, err := IntrospectAccessToken(accessToken)
+func (uc *AuthUseCase) RetrieveUserProfile(accessToken string) (*entity.UserProfile, error) {
+	_, err := uc.IntrospectAccessToken(accessToken)
 	if err != nil {
 		return nil, err
 	}
 
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", authUserInfoEndpoint, nil)
+	req, err := http.NewRequest("POST", uc.authConfig.UserInfoEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -178,25 +175,25 @@ func (uc *UserUseCase) RetrieveUserProfile(accessToken string) (*entity.UserProf
 		return nil, err
 	}
 
-	var userProfile *entity.UserProfile
-	if err := json.Unmarshal(body, userProfile); err != nil {
+	var user *entity.UserProfile
+	if err := json.Unmarshal(body, user); err != nil {
 		return nil, err
 	}
 
-	return userProfile, nil
+	return user, nil
 }
 
-type directoryResponse struct {
-	Count int `json:"count"`
-}
+func (uc *AuthUseCase) ValidateDistributionListHasIsid(isid string) error {
+	type Response struct {
+		Count int `json:"count"`
+	}
 
-func ValidateDistributionListHasIsid(isid string) error {
 	var wg sync.WaitGroup
 	found := false
 	resultChan := make(chan bool, 1)
 	semaphore := make(chan struct{}, 20)
 
-	for _, dl := range authDistributionList {
+	for _, dl := range uc.authConfig.DistributionList {
 		wg.Add(1)
 
 		go func(dl string) {
@@ -208,7 +205,7 @@ func ValidateDistributionListHasIsid(isid string) error {
 				return
 			}
 
-			url := fmt.Sprintf("%s/%s/members", authDistributionListDomain, dl)
+			url := fmt.Sprintf("%s/%s/members", uc.authConfig.DistributionListEndpoint, dl)
 			req, err := http.NewRequest("GET", url, nil)
 			if err != nil {
 				return
@@ -220,7 +217,7 @@ func ValidateDistributionListHasIsid(isid string) error {
 			req.URL.RawQuery = query.Encode()
 
 			req.Header.Add("Accept", "application/json")
-			req.Header.Add("X-Merck-APIKey", authClientId)
+			req.Header.Add("X-Merck-APIKey", uc.authConfig.ClientId)
 
 			client := &http.Client{Timeout: 50 * time.Second}
 
@@ -235,7 +232,7 @@ func ValidateDistributionListHasIsid(isid string) error {
 				return
 			}
 
-			var directory directoryResponse
+			var directory Response
 			if err := json.Unmarshal(body, &directory); err != nil {
 				return
 			}
