@@ -2,31 +2,36 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"database/sql"
+	"doc-translate-go/docs"
+	"doc-translate-go/gen/go/proto/documentprocessor"
 	"doc-translate-go/pkg/config"
 	"doc-translate-go/pkg/file/queue"
+	"doc-translate-go/pkg/tracker"
+	"doc-translate-go/pkg/translator"
+	"doc-translate-go/rest/v1/handler"
+	"fmt"
+	"log"
+
 	filePG "doc-translate-go/pkg/file/repository/postgresql"
 	fileS3 "doc-translate-go/pkg/file/repository/s3"
 	fileUC "doc-translate-go/pkg/file/usecase"
-	"doc-translate-go/pkg/tracker"
-	"doc-translate-go/pkg/translator"
+
 	userPG "doc-translate-go/pkg/user/repository/postgresql"
 	userUC "doc-translate-go/pkg/user/usecase"
-	documentprotov1 "doc-translate-go/proto/gen/go/proto/documentprocessor/v1"
-	"doc-translate-go/rest/v1/handler"
+
 	myMiddleware "doc-translate-go/rest/v1/middleware"
-	"fmt"
-	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
+	echoSwagger "github.com/swaggo/echo-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -48,12 +53,41 @@ var (
 func init() {
 	initDb()
 	initUseCases()
+	initSwagger()
+}
+
+// @title DocsTranslateBackend
+// @version 1.0
+// @description API Routes for DocsTranslateBackend
+// @BasePath /
+func main() {
+	e := echo.New()
+
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
+
+	addRoutes(e)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go translateUseCase.ListenAndExecute(ctx)
+
+	err := e.Start(conf.App.Addr)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func initSwagger() {
+	docs.SwaggerInfo.Host = conf.Swagger.Host
 }
 
 func initDb() {
 	var err error
 
-	uri := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", conf.Db.Username, conf.Db.Password, conf.Db.Host, conf.Db.Port, conf.Db.DbName)
+	uri := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=disable", conf.Db.Username, conf.Db.Password, conf.Db.Host, conf.Db.Port, conf.Db.DbName)
 
 	db, err = sql.Open("postgres", uri)
 	if err != nil {
@@ -71,7 +105,10 @@ func initUseCases() {
 	translFileMetaUseCase = fileUC.NewTranslatedFileMetadataUseCase(translFileMetaRepo)
 
 	// File
-	awsSession, err := session.NewSession(&aws.Config{Region: aws.String(conf.Aws.Region)})
+	awsSession, err := session.NewSession(&aws.Config{
+		Region:   aws.String(conf.Aws.Region),
+		Endpoint: aws.String(conf.Aws.Endpoint),
+	})
 	if err != nil {
 		log.Fatalf("unable to get aws session: %v", err)
 	}
@@ -89,45 +126,74 @@ func initUseCases() {
 	// Auth
 	authUseCase = userUC.NewAuthUseCase(conf.Auth)
 
-	// File Tracker
-	grpcConn, err := grpc.Dial(conf.Translate.GrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("unable to dial translate grpc server: %v", err)
-	}
-	grpcClient := documentprotov1.NewDocumentProcessorClient(grpcConn)
-	grpcTranslator := translator.NewGrpcTranslator(grpcClient)
-
-	redisClient := redis.NewClusterClient(&redis.ClusterOptions{
-		Addrs:     conf.Redis.Addrs,
-		Password:  conf.Redis.Password,
-		TLSConfig: &tls.Config{InsecureSkipVerify: true},
-	})
-
-	if err != nil {
-		log.Fatalf("failed to parse redis expiration: %v", err)
-	}
-	redisFileTracker := tracker.NewRedisFileTracker(redisClient, conf.Redis.ExpirySeconds)
-
-	err = redisFileTracker.Clear()
-	if err != nil {
-		log.Fatalf("failed to clear file tracker: %v", err)
-	}
-
-	// Translate Queue
-	c := make(chan *queue.TranslateTask, 1<<32)
-	chanTranslateQueue := queue.NewChannelTranslateQueue(c)
-
 	// Translate
+	fileTracker := getFileTracker()
+	translateQueue := getTranslateQueue(awsSession)
+	translr := getTranslator()
 	translateUseCase = fileUC.NewTranslateUseCase(
-		grpcTranslator,
+		translr,
 		origFileMetaUseCase,
 		translFileMetaUseCase,
 		fileUseCase,
-		redisFileTracker,
-		chanTranslateQueue,
+		fileTracker,
+		translateQueue,
 	)
 
-	progressUseCase = fileUC.NewProgressUseCase(redisFileTracker)
+	// Progress
+	progressUseCase = fileUC.NewProgressUseCase(fileTracker)
+}
+
+func getTranslator() translator.Translator {
+	var translr translator.Translator
+
+	switch conf.App.Translator {
+	case "echo":
+		translr = translator.NewEchoTranslator()
+	default:
+		grpcConn, err := grpc.Dial(conf.Translate.GrpcServer, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Fatalf("unable to dial translate grpc server: %v", err)
+		}
+		grpcClient := documentprocessor.NewDocumentProcessorClient(grpcConn)
+		translr = translator.NewGrpcTranslator(grpcClient)
+	}
+
+	return translr
+}
+
+func getTranslateQueue(awsSession *session.Session) queue.TranslateQueue {
+	var translateQueue queue.TranslateQueue
+
+	switch conf.App.TranslateQueue {
+	case "chan":
+		c := make(chan *queue.TranslateTask, 1<<32)
+		translateQueue = queue.NewChannelTranslateQueue(c)
+	default:
+		sqsClient := sqs.New(awsSession)
+		translateQueue = queue.NewSqsTranslateQueue(sqsClient, conf.Aws.SqsQueueUrl, conf.Aws.SqsGroupId)
+	}
+
+	return translateQueue
+}
+
+func getFileTracker() tracker.FileTracker {
+	var fileTracker tracker.FileTracker
+
+	switch conf.App.FileTracker {
+	default:
+		redisClient := redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:    conf.Redis.Addrs,
+			Password: conf.Redis.Password,
+		})
+
+		fileTracker = tracker.NewRedisFileTracker(redisClient, conf.Redis.ExpirySeconds)
+
+		if err := redisClient.Ping(context.Background()).Err(); err != nil {
+			log.Fatalf("failed to ping redis: %v", err)
+		}
+	}
+
+	return fileTracker
 }
 
 func addRoutes(e *echo.Echo) {
@@ -171,20 +237,4 @@ func addRoutes(e *echo.Echo) {
 	e.GET("/authorize", func(c echo.Context) error { return handler.Authorize(c, authUseCase) })
 
 	e.GET("/token", func(c echo.Context) error { return handler.Token(c, authUseCase) })
-}
-
-func main() {
-	e := echo.New()
-
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-
-	addRoutes(e)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go translateUseCase.ListenAndExecute(ctx)
-
-	e.Start(conf.App.Addr)
 }

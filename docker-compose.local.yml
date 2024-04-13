@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: localstack
+    image: localstack/localstack
+    ports:
+      - "127.0.0.1:4566:4566" # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559" # external services port range
+    command:
+      - awscli sqs create-queue --queue-name translate-queue
+      - awscli s3api create-bucket --bucket docx-translate
+    environment:
+      DEBUG: "1"
+      SERVICES: "sqs,s3"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  redis-node-0:
+    container_name: redis-node-0
+    image: bitnami/redis-cluster:7.2-debian-12
+    environment:
+      REDIS_PASSWORD: "redis"
+      REDIS_NODES: "redis-node-0 redis"
+
+  redis:
+    container_name: redis
+    image: bitnami/redis-cluster:7.2-debian-12
+    ports:
+      - "6379:6379"
+    depends_on:
+      - redis-node-0
+    environment:
+      REDIS_PASSWORD: "redis"
+      REDISCLI_AUTH: "redis"
+      REDIS_NODES: "redis-node-0 redis"
+      REDIS_CLUSTER_CREATOR: "yes"
+
+  postgres:
+    container_name: postgres
+    image: postgres:16.2-alpine3.19
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "postgres"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "postgres"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+  api:
+    container_name: api
+    build: .
+    ports:
+      - "8080:8080"
+    env_file: .local.env
+    environment:
+      AWS_ENDPOINT: "http://localstack:4566"
+      AWS_SQS_QUEUE_URL: "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/translate-queue"
+      DB_HOST: "postgres"
+      REDIS_ADDRS: "redis:6379"
+    depends_on:
+      - localstack
+      - redis
+      - postgres

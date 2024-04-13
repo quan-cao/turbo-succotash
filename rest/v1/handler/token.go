@@ -7,13 +7,21 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func Token(c echo.Context, authUseCase *usecase.AuthUseCase) error {
-	type Request struct {
-		GrantType string `json:"grant_type"`
-		Token     string `json:"token"`
-	}
+type TokenRequest struct {
+	GrantType string `json:"grant_type"`
+	Token     string `json:"token"`
+}
 
-	var req Request
+// @Sumaary Retrieve Access Token
+// @Description Retrieves access token based on the provided grant type and token.
+// @Tags User
+// @Accept json
+// @Produce json
+// @Param request body TokenRequest true "Token Request"
+// @Success 200 {object} map[string]any "Access Token Response"
+// @Router /token [post]
+func Token(c echo.Context, authUseCase *usecase.AuthUseCase) error {
+	var req TokenRequest
 
 	if err := c.Bind(&req); err != nil {
 		c.Logger().Errorf("failed to parse request: %v", err)

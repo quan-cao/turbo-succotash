@@ -1,0 +1,268 @@
+basePath: /
+definitions:
+  entity.TranslatedFileMetadata:
+    properties:
+      cost:
+        type: number
+      createdAt:
+        type: string
+      createdBy:
+        type: string
+      filename:
+        type: string
+      id:
+        type: integer
+      originalFileId:
+        type: integer
+      targetLanguage:
+        type: string
+      timeTaken:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  handler.DeleteFilesRequest:
+    properties:
+      file_ids:
+        description: FileIds are translated file ids.
+        items:
+          type: integer
+        type: array
+    type: object
+  handler.FileDownloadRequest:
+    properties:
+      file_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  handler.FileDownloadResponse:
+    properties:
+      zipData:
+        items:
+          type: integer
+        type: array
+    type: object
+  handler.TokenRequest:
+    properties:
+      grant_type:
+        type: string
+      token:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API Routes for DocsTranslateBackend
+  title: DocsTranslateBackend
+  version: "1.0"
+paths:
+  /authorize:
+    get:
+      consumes:
+      - application/json
+      description: Initiates user authorization process by redirecting to the authorization
+        service.
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to authorization URL
+          schema:
+            type: header
+        "400":
+          description: 'Bad Request: Invalid input parameters'
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 'Internal Server Error: Processing error'
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Authorize user
+      tags:
+      - User
+  /delete-translated-files:
+    delete:
+      consumes:
+      - application/json
+      description: Delete Files
+      parameters:
+      - description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: File Delete Request
+        in: body
+        name: file_delete_request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.DeleteFilesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Files delete successfully
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            type: string
+      summary: Delete Files
+      tags:
+      - Files
+  /download-translated-files:
+    post:
+      consumes:
+      - application/json
+      description: Downloads the content of translated files as zipped binary data.
+      parameters:
+      - description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: File Download Request
+        in: body
+        name: file_download_request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.FileDownloadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully downloaded and zipped files data
+          schema:
+            $ref: '#/definitions/handler.FileDownloadResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Download translated files
+      tags:
+      - Files
+  /show-translated-files:
+    get:
+      consumes:
+      - application/json
+      description: List out all translated files user has
+      parameters:
+      - description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.TranslatedFileMetadata'
+            type: array
+        "400":
+          description: Bad request
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Show all translated files
+      tags:
+      - Files
+  /token:
+    post:
+      consumes:
+      - application/json
+      description: Retrieves access token based on the provided grant type and token.
+      parameters:
+      - description: Token Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.TokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Access Token Response
+          schema:
+            additionalProperties: true
+            type: object
+      tags:
+      - User
+  /translate-docx:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send multiple files to the gRPC server for translation along with
+        source and target language selections.
+      parameters:
+      - description: Authorization
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: Upload files
+        in: formData
+        items:
+          type: file
+        name: file
+        required: true
+        type: array
+      - description: Source Language
+        in: formData
+        name: sourceLang
+        required: true
+        type: string
+      - description: Target Language
+        in: formData
+        name: targetLang
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Files sent successfully
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Translate multiple DOCX files
+      tags:
+      - Files
+  /upload-progress:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the file upload progress based on isid
+      parameters:
+      - description: Authorization
+        in: header
+        name: Authorization
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Get File upload progress
+      tags:
+      - Files
+swagger: "2.0"

@@ -28,6 +28,7 @@ func AuthMiddleware(userUseCase *usecase.UserUseCase, authUseCase *usecase.AuthU
 			} else {
 				userProfile, err = authUseCase.RetrieveUserProfile(token)
 				if err != nil {
+					c.Logger().Errorf("unable to retrieve user profile: %v", err)
 					return echo.ErrUnauthorized
 				}
 			}
@@ -42,6 +43,7 @@ func AuthMiddleware(userUseCase *usecase.UserUseCase, authUseCase *usecase.AuthU
 
 				_, err := userUseCase.Persist(&newUser)
 				if err != nil {
+					c.Logger().Errorf("unable to persist new user: %v", err)
 					return echo.ErrInternalServerError
 				}
 			}

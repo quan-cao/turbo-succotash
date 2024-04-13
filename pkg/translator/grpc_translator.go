@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	documentprotov1 "doc-translate-go/proto/gen/go/proto/documentprocessor/v1"
+	documentproto "doc-translate-go/gen/go/proto/documentprocessor"
 )
 
 // GrpcTranslator makes gRPC call to another service to translate documents
 type GrpcTranslator struct {
-	client documentprotov1.DocumentProcessorClient
+	client documentproto.DocumentProcessorClient
 }
 
-func NewGrpcTranslator(client documentprotov1.DocumentProcessorClient) *GrpcTranslator {
+func NewGrpcTranslator(client documentproto.DocumentProcessorClient) *GrpcTranslator {
 	return &GrpcTranslator{client}
 }
 
@@ -20,11 +20,14 @@ func (t *GrpcTranslator) Translate(b []byte, sourceLang string, targetLang strin
 	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Second)
 	defer cancel()
 
-	resp, err := t.client.ProcessDocument(ctx, &documentprotov1.DocumentRequest{
-		Document:   b,
-		SourceLang: sourceLang,
-		TargetLang: targetLang,
-	})
+	resp, err := t.client.ProcessDocument(
+		ctx,
+		&documentproto.DocumentRequest{
+			Document:   b,
+			SourceLang: sourceLang,
+			TargetLang: targetLang,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}

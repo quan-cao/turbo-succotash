@@ -10,6 +10,23 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type DeleteFilesRequest struct {
+	// FileIds are translated file ids.
+	FileIds []int `json:"file_ids"`
+}
+
+// DeleteFiles - Delete Files
+//
+// @Summary Delete Files
+// @Description Delete Files
+// @Tags Files
+// @Accept json
+// @Produce json
+// @param Authorization header string true "Authorization"
+// @Param file_delete_request body DeleteFilesRequest true "File Delete Request"
+// @Success 200 {string} string "Files delete successfully"
+// @Failure 400 {string} string "Bad request"
+// @Router /delete-translated-files [delete]
 func DeleteFiles(
 	c echo.Context,
 	userUseCase *UserUC.UserUseCase,
@@ -17,11 +34,6 @@ func DeleteFiles(
 	translatedFileUseCase *FileUC.TranslatedFileMetadataUseCase,
 	fileUseCase *FileUC.FileUseCase,
 ) error {
-	type Request struct {
-		// FileIds are translated file ids.
-		FileIds []int `json:"file_ids"`
-	}
-
 	userProfileValue := c.Get("userProfile")
 	user, ok := userProfileValue.(UserENT.UserProfile)
 	if !ok {
@@ -29,7 +41,7 @@ func DeleteFiles(
 		return echo.ErrBadRequest
 	}
 
-	var req Request
+	var req DeleteFilesRequest
 	if err := c.Bind(&req); err != nil {
 		c.Logger().Errorf("failed to parse request: %v", err)
 		return echo.ErrBadRequest

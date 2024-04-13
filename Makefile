@@ -1,9 +1,15 @@
+protoc:
+	@protoc --go_out=gen/go --go_opt=paths=source_relative --go-grpc_out=gen/go --go-grpc_opt=paths=source_relative proto/documentprocessor/documentprocessor.proto
+
+swag:
+	@swagger init -g cmd/rest/main.go
+
 mock:
 	@mockgen -destination=mocks/mock_SQSAPI.go -package=mocks github.com/aws/aws-sdk-go/service/sqs/sqsiface SQSAPI
 	@mockgen -destination=mocks/mock_UploaderAPI.go -package=mocks github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface UploaderAPI
 	@mockgen -destination=mocks/mock_DownloaderAPI.go -package=mocks github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface DownloaderAPI
 	@mockgen -destination=mocks/mock_S3API.go -package=mocks github.com/aws/aws-sdk-go/service/s3/s3iface S3API
-	@mockgen -destination=mocks/mock_DocumentProcessClient.go -package=mocks doc-translate-go/proto/gen/go/proto/documentprocessor/v1 DocumentProcessorClient
+	@mockgen -destination=mocks/mock_DocumentProcessClient.go -package=mocks doc-translate-go/gen/go/proto/documentprocessor DocumentProcessorClient
 
 unittest:
 	@go test -count=1 -coverprofile=coverage.out -short -race ./pkg/... ./rest/...
@@ -12,3 +18,10 @@ unittest:
 
 read-cov:
 	@go tool cover -html=coverage.out
+
+local-up:
+	@docker compose -d -f docker-compose.local.yml up
+	@migrate -source "file://migrations" -database "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable" up
+
+local-down:
+	@docker compose -v --remove-orphans down

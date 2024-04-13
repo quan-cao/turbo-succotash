@@ -126,6 +126,9 @@ func (uc *TranslateUseCase) TranslateAsync(
 // ExecuteQueue takes one message out of the queue and performs translating.
 func (uc *TranslateUseCase) ExecuteQueue() error {
 	t, key := uc.translateQueue.Take()
+	if t == nil {
+		return nil
+	}
 
 	fileTrackerKey := fmt.Sprintf("%s_%s", t.Isid, t.Filename)
 

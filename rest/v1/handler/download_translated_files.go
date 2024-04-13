@@ -11,15 +11,29 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type FileDownloadRequest struct {
+	FileIds []int `json:"file_ids"`
+}
+
+type FileDownloadResponse struct {
+	ZipData []byte `json:"zipData"`
+}
+
+// DownloadTranslatedFiles - Download Translated Files
+//
+// @Summary Download translated files
+// @Description Downloads the content of translated files as zipped binary data.
+// @Tags Files
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Authorization"
+// @Param file_download_request body FileDownloadRequest true "File Download Request"
+// @Success 200 {object} FileDownloadResponse "Successfully downloaded and zipped files data"
+// @Failure 400 {object} map[string]any "Bad request"
+// @Failure 500 {object} map[strong]any "Internal Server Error"
+// @Router /download-translated-files [post]
 func DownloadTranslatedFiles(c echo.Context, translatedFileUseCase *usecase.TranslatedFileMetadataUseCase, fileUseCase *usecase.FileUseCase) error {
-	type Request struct {
-		FileIds []int `json:"file_ids"`
-	}
-
-	type Response struct {
-		ZipData []byte `json:"zipData"`
-	}
-
 	userProfileValue := c.Get("userProfile")
 	user, ok := userProfileValue.(entity.UserProfile)
 	if !ok {
@@ -27,7 +41,7 @@ func DownloadTranslatedFiles(c echo.Context, translatedFileUseCase *usecase.Tran
 		return echo.ErrBadRequest
 	}
 
-	var req Request
+	var req FileDownloadRequest
 	if err := c.Bind(&req); err != nil {
 		c.Logger().Errorf("failed to parse request: %v", err)
 		return echo.ErrInternalServerError
@@ -72,5 +86,5 @@ func DownloadTranslatedFiles(c echo.Context, translatedFileUseCase *usecase.Tran
 		return echo.ErrInternalServerError
 	}
 
-	return c.JSON(http.StatusOK, &Response{ZipData: buf.Bytes()})
+	return c.JSON(http.StatusOK, &FileDownloadResponse{ZipData: buf.Bytes()})
 }

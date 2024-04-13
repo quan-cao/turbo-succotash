@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v4.25.3
-// source: proto/documentprocessor/v1/documentprocessor.proto
+// source: proto/documentprocessor/documentprocessor.proto
 
-package documentprotov1
+package documentprocessor
 
 import (
 	context "context"
@@ -35,7 +35,7 @@ func NewDocumentProcessorClient(cc grpc.ClientConnInterface) DocumentProcessorCl
 
 func (c *documentProcessorClient) ProcessDocument(ctx context.Context, in *DocumentRequest, opts ...grpc.CallOption) (*DocumentResponse, error) {
 	out := new(DocumentResponse)
-	err := c.cc.Invoke(ctx, "/documentprocessor.v1.DocumentProcessor/ProcessDocument", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/documentprocessor.DocumentProcessor/ProcessDocument", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func _DocumentProcessor_ProcessDocument_Handler(srv interface{}, ctx context.Con
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/documentprocessor.v1.DocumentProcessor/ProcessDocument",
+		FullMethod: "/documentprocessor.DocumentProcessor/ProcessDocument",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DocumentProcessorServer).ProcessDocument(ctx, req.(*DocumentRequest))
@@ -92,7 +92,7 @@ func _DocumentProcessor_ProcessDocument_Handler(srv interface{}, ctx context.Con
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var DocumentProcessor_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "documentprocessor.v1.DocumentProcessor",
+	ServiceName: "documentprocessor.DocumentProcessor",
 	HandlerType: (*DocumentProcessorServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -101,5 +101,5 @@ var DocumentProcessor_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/documentprocessor/v1/documentprocessor.proto",
+	Metadata: "proto/documentprocessor/documentprocessor.proto",
 }

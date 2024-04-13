@@ -10,6 +10,19 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// Translate multiple DOCX files
+//
+// @Summary Translate multiple DOCX files
+// @Description Send multiple files to the gRPC server for translation along with source and target language selections.
+// @Tags Files
+// @Accept multipart/form-data
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Authorization"
+// @Param file formData []file true "Upload files"
+// @Param sourceLang formData string true "Source Language"
+// @Param targetLang formData string true "Target Language"
+// @Success 200 {string} string "Files sent successfully"
+// @Router /translate-docx [post]
 func TranslateDocx(c echo.Context, translateUseCase *usecase.TranslateUseCase) error {
 	userProfileValue := c.Get("userProfile")
 	userProfile, ok := userProfileValue.(entity.UserProfile)

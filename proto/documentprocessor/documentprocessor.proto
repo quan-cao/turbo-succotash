@@ -1,6 +1,6 @@
 syntax = "proto3";
-package documentprocessor.v1;
-option go_package = "doc-translate-go/gen/go/documentprocessor/v1;documentprotov1";
+package documentprocessor;
+option go_package = "doc-translate-go/gen/go/documentprocessor;documentprocessor";
 
 service DocumentProcessor {
         rpc ProcessDocument(DocumentRequest) returns (DocumentResponse);
