@@ -2,4 +2,7 @@ coverage.out
 
 *.env*
 
+tls/*
+
+!tls/local/
 !.local.env

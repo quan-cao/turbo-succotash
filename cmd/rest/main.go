@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"doc-translate-go/docs"
 	"doc-translate-go/gen/go/proto/documentprocessor"
@@ -184,6 +185,9 @@ func getFileTracker() tracker.FileTracker {
 		redisClient := redis.NewClusterClient(&redis.ClusterOptions{
 			Addrs:    conf.Redis.Addrs,
 			Password: conf.Redis.Password,
+			TLSConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
 		})
 
 		fileTracker = tracker.NewRedisFileTracker(redisClient, conf.Redis.ExpirySeconds)

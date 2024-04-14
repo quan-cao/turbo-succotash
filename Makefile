@@ -25,3 +25,8 @@ local-up:
 
 local-down:
 	@docker compose -v --remove-orphans down
+
+local-tls:
+	@rm -rf tls/local/redis
+	@mkdir -p tls/local/redis && cd tls/local/redis && curl -s https://raw.githubusercontent.com/redis/redis/cc0091f0f9fe321948c544911b3ea71837cf86e3/utils/gen-test-certs.sh | sh
+	@mv tls/local/redis/tests/tls/* tls/local/redis/ && rm -r tls/local/redis/tests
