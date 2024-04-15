@@ -20,11 +20,11 @@ read-cov:
 	@go tool cover -html=coverage.out
 
 local-up:
-	@docker compose -d -f docker-compose.local.yml up
+	@docker compose -f docker-compose.local.yml up -d
 	@migrate -source "file://migrations" -database "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable" up
 
 local-down:
-	@docker compose -v --remove-orphans down
+	@docker compose -f docker-compose.local.yml down -v --remove-orphans
 
 local-tls:
 	@rm -rf tls/local/redis
