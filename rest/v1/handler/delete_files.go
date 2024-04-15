@@ -35,7 +35,7 @@ func DeleteFiles(
 	fileUseCase *FileUC.FileUseCase,
 ) error {
 	userProfileValue := c.Get("userProfile")
-	user, ok := userProfileValue.(UserENT.UserProfile)
+	user, ok := userProfileValue.(*UserENT.UserProfile)
 	if !ok {
 		c.Logger().Error("user profile not found")
 		return echo.ErrBadRequest

@@ -3,8 +3,8 @@ package translator
 // GrpcTranslator makes gRPC call to another service to translate documents
 type EchoTranslator struct{}
 
-func NewEchoTranslator() *GrpcTranslator {
-	return &GrpcTranslator{}
+func NewEchoTranslator() *EchoTranslator {
+	return &EchoTranslator{}
 }
 
 func (t *EchoTranslator) Translate(b []byte, sourceLang string, targetLang string) ([]byte, error) {
@@ -12,4 +12,4 @@ func (t *EchoTranslator) Translate(b []byte, sourceLang string, targetLang strin
 }
 
 // Ensure implementation
-var _ Translator = (*GrpcTranslator)(nil)
+var _ Translator = (*EchoTranslator)(nil)

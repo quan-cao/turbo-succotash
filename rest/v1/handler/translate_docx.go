@@ -25,7 +25,7 @@ import (
 // @Router /translate-docx [post]
 func TranslateDocx(c echo.Context, translateUseCase *usecase.TranslateUseCase) error {
 	userProfileValue := c.Get("userProfile")
-	userProfile, ok := userProfileValue.(entity.UserProfile)
+	userProfile, ok := userProfileValue.(*entity.UserProfile)
 	if !ok {
 		return echo.ErrBadRequest
 	}

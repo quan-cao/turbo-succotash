@@ -35,7 +35,7 @@ type UploadProgressResponse struct {
 // @Router /upload-progress [get]
 func UploadProgress(c echo.Context, progressUseCase *usecase.ProgressUseCase) error {
 	userProfileValue := c.Get("userProfile")
-	user, ok := userProfileValue.(entity.UserProfile)
+	user, ok := userProfileValue.(*entity.UserProfile)
 	if !ok {
 		c.Logger().Error("user profile not found")
 		return echo.ErrBadRequest
